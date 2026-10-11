@@ -1,0 +1,10 @@
+{
+    "pinned_version": {
+        "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+        "features": {
+            "oss-cad-suite": {
+                "version": "2026-10-11"
+            }
+        }
+    }
+}

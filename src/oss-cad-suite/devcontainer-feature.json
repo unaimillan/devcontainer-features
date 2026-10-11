@@ -1,0 +1,42 @@
+{
+    "id": "oss-cad-suite",
+    "version": "1.0.0",
+    "name": "OSS CAD Suite (shared volume)",
+    "description": "YosysHQ oss-cad-suite (yosys, nextpnr, verilator, iverilog, ...) downloaded once per Docker host into a shared named volume and reused by every dev container.",
+    "documentationURL": "https://github.com/unaimillan/devcontainer-features/tree/main/src/oss-cad-suite",
+    "licenseURL": "https://github.com/unaimillan/devcontainer-features/blob/main/LICENSE",
+    "keywords": [
+        "oss-cad-suite",
+        "yosys",
+        "nextpnr",
+        "verilator",
+        "iverilog",
+        "fpga",
+        "eda"
+    ],
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "latest",
+                "2026-10-11"
+            ],
+            "default": "latest",
+            "description": "oss-cad-suite release tag (YYYY-MM-DD). 'latest' is resolved to a concrete tag at image build time; pin a date tag for reproducible builds."
+        }
+    },
+    "mounts": [
+        {
+            "type": "volume",
+            "source": "oss-cad-suite",
+            "target": "/opt/oss-cad-suite"
+        }
+    ],
+    "containerEnv": {
+        "PATH": "${PATH}:/usr/local/oss-cad-suite/bin"
+    },
+    "onCreateCommand": "/usr/local/share/oss-cad-suite/ensure.sh",
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}

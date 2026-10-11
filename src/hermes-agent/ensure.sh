@@ -8,9 +8,9 @@ SHARE_DIR=/usr/local/share/hermes-agent
 # shellcheck source=/dev/null
 . "$SHARE_DIR/env"
 
-if [ ! -w "$HERMES_HOME" ] && ! sudo -n chown "$(id -u):$(id -g)" "$HERMES_HOME" 2>/dev/null; then
-    echo "hermes-agent: $HERMES_HOME is not writable by $(id -un) and passwordless sudo is unavailable." >&2
-    echo "hermes-agent: fix once with: docker run --rm -v hermes-agent-config:/v alpine chown $(id -u):$(id -g) /v" >&2
+if [ "$(stat -c %u "$HERMES_HOME")" != "$(id -u)" ] && ! sudo -n chown -R "$(id -u):$(id -g)" "$HERMES_HOME" 2>/dev/null; then
+    echo "hermes-agent: $HERMES_HOME is not owned by $(id -un) and passwordless sudo is unavailable." >&2
+    echo "hermes-agent: fix once with: docker run --rm -v hermes-agent-config:/v alpine chown -R $(id -u):$(id -g) /v" >&2
     exit 1
 fi
 

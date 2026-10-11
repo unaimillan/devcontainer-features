@@ -92,6 +92,17 @@ else
     su "$USERNAME" -s /bin/bash -c "$cmd"
 fi
 
+# The dev container CLI may later change the user's uid to match the host
+# (updateRemoteUserUID) and re-own only the home folder. Group access keeps
+# code and tool store usable then (supplementary groups survive usermod -u);
+# re-owning ~2 GB at start would copy it all into the container layer.
+groupadd -f -r hermes  # system gid: never collides with a host gid the CLI remaps to
+[ "$USERNAME" = root ] || usermod -aG hermes "$USERNAME"
+chgrp -R hermes "$INSTALL_DIR" "$RUNTIME_DIR"
+chmod -R g+rwX "$INSTALL_DIR" "$RUNTIME_DIR"
+find "$INSTALL_DIR" "$RUNTIME_DIR" -type d -exec chmod g+s {} +
+git config --system --add safe.directory "$INSTALL_DIR"
+
 # Defaults for every caller; values already in the environment (e.g. a
 # containerEnv in devcontainer.json) win. The agent dir is kept in a variable
 # so the shim never names the checkout directly: Hermes's own launcher

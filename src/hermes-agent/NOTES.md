@@ -21,18 +21,23 @@ splits them up:
   `/etc/bash.bashrc`.
 - **On container create**, `ensure.sh` makes sure `HERMES_HOME` is writable and holds the config
   skeleton. It never overwrites existing files. Run `hermes setup` once; the result stays in the volume.
-- **On every start**, the feature's `entrypoint` (as root) hands the volume root to the remote user
-  if Docker created it root-owned. That happens with the containerd image store, which doesn't seed
-  new volumes from the image.
+- **On every start**, the feature's `entrypoint` (as root) hands `HERMES_HOME` to the remote user
+  when it belongs to another uid. That happens with the containerd image store, which doesn't seed new
+  volumes from the image, and when the dev container CLI changes the remote user's uid to match the
+  host (`updateRemoteUserUID`, for example a host user with uid 1001).
 - `hermes update` works inside a running container on a branch install (see below). It updates the
   container's copy only; the next rebuild starts again from the image.
+- **Remapped uid:** code and tool store belong to the build-time uid and to a `hermes` group the
+  remote user is in, so Hermes runs and can write its tool store even after the CLI remaps the uid.
+  `hermes update` refuses to change a checkout owned by another uid, though; rebuild the image
+  instead. (Re-owning ~2 GB at start would copy all of it into the container layer.)
 
 ### The volume is shared
 
 `hermes-agent-config` is one volume per Docker host. Every dev container that uses this feature
 sees the same config, API keys, memories and sessions. Containers running at the same time write
-to the same session store. If the containers run as different users, each start re-owns only the
-volume root, not its contents. Remote users with the same uid (`vscode` and `node` are both 1000)
+to the same session store. If the containers run as different uids, each start re-owns the volume
+to its own user. Remote users with the same uid (`vscode` and `node` are both 1000)
 work without any change.
 
 ### Custom paths

@@ -23,6 +23,8 @@ check ".env is private" bash -c '[ "$(stat -c %a /var/lib/hermes/.env)" = 600 ]'
 check "no code in data dir" test ! -e /var/lib/hermes/hermes-agent
 check "no tools in data dir" test ! -e /var/lib/hermes/tools
 check "tool store in image" bash -c '[ -n "$(ls -A /opt/hermes/tools)" ]'
+check "tool store writable" test -w /opt/hermes/tools
+check "git reads the checkout" git -C /opt/hermes/agent status --short
 check "~/.hermes links to data dir" bash -c '[ "$(readlink -f ~/.hermes)" = /var/lib/hermes ]'
 
 reportResults

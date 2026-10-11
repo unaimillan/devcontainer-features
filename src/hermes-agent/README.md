@@ -20,6 +20,7 @@ Nous Research Hermes Agent installed into the image at build time, with only its
 | computerUse | Install the computer-use driver (cua-driver). Off passes --skip-computer-use. | boolean | false |
 | installDir | Code checkout (installer --dir). Lives in the image and is refreshed on every rebuild. | string | /opt/hermes/agent |
 | runtimeDir | Tool store (HERMES_RUNTIME_DIR: uv, node, ripgrep, ...). Lives in the image. | string | /opt/hermes/tools |
+| installsDir | Dependency state (the venv Hermes would keep in HERMES_HOME/installs/<key>). Lives in the image; HERMES_HOME/installs/<key> links to it. Must be outside homeDir. | string | /opt/hermes/installs |
 | homeDir | Data dir (HERMES_HOME: config.yaml, .env, memories, sessions). The hermes-agent-config volume is always mounted at /var/lib/hermes; for another path, add your own mount. | string | /var/lib/hermes |
 | linkUserHome | Symlink ~/.hermes to homeDir when ~/.hermes does not exist yet. | boolean | true |
 
@@ -34,6 +35,7 @@ splits them up:
 |---|---|---|
 | Code checkout (installer `--dir`) | `installDir` (`/opt/hermes/agent`) | image, rebuilt fresh |
 | Tool store (`HERMES_RUNTIME_DIR`: uv, node, ripgrep, ...) | `runtimeDir` (`/opt/hermes/tools`) | image, rebuilt fresh |
+| Dependency state (the venv Hermes keeps in `HERMES_HOME/installs/<key>`) | `installsDir` (`/opt/hermes/installs`) | image, linked from `HERMES_HOME/installs/<key>` |
 | Data (`HERMES_HOME`: `config.yaml`, `.env`, memories, sessions, skills, logs) | `homeDir` (`/var/lib/hermes`) | named volume `hermes-agent-config` |
 | `~/.hermes` → `homeDir` symlink | `linkUserHome` (`true`) | image |
 
@@ -45,7 +47,10 @@ splits them up:
   Login and interactive shells also get the defaults, through `/etc/profile.d/hermes-agent.sh` and
   `/etc/bash.bashrc`.
 - **On container create**, `ensure.sh` makes sure `HERMES_HOME` is writable and holds the config
-  skeleton. It never overwrites existing files. Run `hermes setup` once; the result stays in the volume.
+  skeleton. It never overwrites existing files, except `installs/<key>` for this image's checkout:
+  a volume created by an older image or a manual install holds no dependency state for it (Hermes
+  then stops with "no dependency environment is committed") or a stale one, so it is replaced with
+  a link to the image's. Run `hermes setup` once; the result stays in the volume.
 - **On every start**, the feature's `entrypoint` (as root) hands `HERMES_HOME` to the remote user
   when it belongs to another uid. That happens with the containerd image store, which doesn't seed new
   volumes from the image, and when the dev container CLI changes the remote user's uid to match the

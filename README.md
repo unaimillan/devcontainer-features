@@ -6,6 +6,7 @@ GitHub Container Registry under `ghcr.io/unaimillan/devcontainer-features`.
 | Feature | Description |
 |---|---|
 | [`oss-cad-suite`](src/oss-cad-suite) | [YosysHQ oss-cad-suite](https://github.com/YosysHQ/oss-cad-suite-build) (yosys, nextpnr, verilator, iverilog, ...), downloaded once per Docker host into a shared named volume and reused by every dev container. |
+| [`hermes-agent`](src/hermes-agent) | [Nous Research Hermes Agent](https://github.com/NousResearch/hermes-agent), built into the image at build time, with only its config, keys, memories and sessions kept in a named volume shared by every dev container. |
 
 ## `oss-cad-suite`
 
@@ -31,6 +32,25 @@ Verilator 5.053 devel rev v5.052-362-ge9f8cb2d9 (mod)
 The first container on a Docker host downloads the release (~700 MiB) into the
 `oss-cad-suite` volume. After that, every container finds it there and skips the download.
 See the [feature docs](src/oss-cad-suite) for how it works and how to clean up old versions.
+
+## `hermes-agent`
+
+```jsonc
+{
+    "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+    "features": {
+        // "latest" installs main's HEAD when the image is built; pass a commit SHA to pin it.
+        // browser / computerUse are off by default; the path options keep the defaults below.
+        "ghcr.io/unaimillan/devcontainer-features/hermes-agent:1": {}
+    }
+}
+```
+
+Code (`/opt/hermes/agent`) and tools (`/opt/hermes/tools`) live in the image, so each rebuild
+installs fresh. `HERMES_HOME` (`/var/lib/hermes`, linked from `~/.hermes`) is the
+`hermes-agent-config` volume, so `hermes setup`, API keys, providers and memories survive rebuilds
+and are shared by every container. See the [feature docs](src/hermes-agent) for the options and
+for migrating from a manual install.
 
 ## Repo layout
 

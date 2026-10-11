@@ -13,6 +13,7 @@ jobs:
       matrix:
         features:
           - oss-cad-suite
+          - hermes-agent
         baseImage:
           - debian:latest
           - ubuntu:latest
@@ -32,6 +33,7 @@ jobs:
       matrix:
         features:
           - oss-cad-suite
+          - hermes-agent
     steps:
       - uses: actions/checkout@v4
 

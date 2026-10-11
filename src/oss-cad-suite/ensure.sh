@@ -10,7 +10,14 @@ VOLUME_DIR=/opt/oss-cad-suite
 DEST="$VOLUME_DIR/$VERSION"
 
 if [ ! -f "$DEST/.complete" ]; then
-    exec 9>"$VOLUME_DIR/.lock"
+    if [ ! -w "$VOLUME_DIR" ] && ! sudo -n chmod 1777 "$VOLUME_DIR" 2>/dev/null; then
+        echo "oss-cad-suite: $VOLUME_DIR is not writable by $(id -un) and passwordless sudo is unavailable." >&2
+        echo "oss-cad-suite: fix once with: docker run --rm -v oss-cad-suite:/v alpine chmod 1777 /v" >&2
+        exit 1
+    fi
+    # Lock the volume directory itself: no lock file whose owner could block
+    # containers running as a different user.
+    exec 9<"$VOLUME_DIR"
     flock 9
     # Re-check: a concurrent container may have finished while we waited.
     if [ ! -f "$DEST/.complete" ]; then

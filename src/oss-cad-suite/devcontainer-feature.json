@@ -1,6 +1,6 @@
 {
     "id": "oss-cad-suite",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "name": "OSS CAD Suite (shared volume)",
     "description": "YosysHQ oss-cad-suite (yosys, nextpnr, verilator, iverilog, ...) downloaded once per Docker host into a shared named volume and reused by every dev container.",
     "documentationURL": "https://github.com/unaimillan/devcontainer-features/tree/main/src/oss-cad-suite",
@@ -35,6 +35,7 @@
     "containerEnv": {
         "PATH": "${PATH}:/usr/local/oss-cad-suite/bin"
     },
+    "entrypoint": "/usr/local/share/oss-cad-suite/entrypoint.sh",
     "onCreateCommand": "/usr/local/share/oss-cad-suite/ensure.sh",
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils"

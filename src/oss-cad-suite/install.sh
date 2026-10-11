@@ -4,7 +4,6 @@
 set -euo pipefail
 
 VERSION="${VERSION:-latest}"
-REMOTE_USER="${_REMOTE_USER:-root}"
 SHARE_DIR=/usr/local/share/oss-cad-suite
 VOLUME_DIR=/opt/oss-cad-suite
 REPO=YosysHQ/oss-cad-suite-build
@@ -52,12 +51,13 @@ fi
 mkdir -p "$SHARE_DIR"
 echo "$VERSION" > "$SHARE_DIR/version"
 echo "$ARCH" > "$SHARE_DIR/arch"
-install -m 0755 "$(dirname "$0")/ensure.sh" "$SHARE_DIR/ensure.sh"
+install -m 0755 "$(dirname "$0")/ensure.sh" "$(dirname "$0")/entrypoint.sh" "$SHARE_DIR/"
 
-# Docker copies owner/mode of this dir into the empty named volume on first
-# mount, so the remote user can populate it without sudo.
+# The volume is shared by containers with different remote users, so its root
+# is world-writable with the sticky bit, like /tmp. Classic Docker storage
+# copies this mode into a new empty volume; elsewhere entrypoint.sh sets it.
 mkdir -p "$VOLUME_DIR"
-chown "$REMOTE_USER:" "$VOLUME_DIR"
+chmod 1777 "$VOLUME_DIR"
 
 # Stable path for PATH; dangles until ensure.sh has populated the volume.
 ln -sfn "$VOLUME_DIR/$VERSION" /usr/local/oss-cad-suite

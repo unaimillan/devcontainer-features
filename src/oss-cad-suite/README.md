@@ -30,11 +30,14 @@ host**, so a new dev container doesn't have to fetch it again.
 - At image build time, `install.sh`:
   - resolves `latest` to a concrete tag
   - makes `/usr/local/oss-cad-suite` a symlink to `/opt/oss-cad-suite/<tag>`
-  - gives the mountpoint to the remote user, which makes the volume writable without sudo
+  - makes the volume root world-writable with the sticky bit (`1777`, like `/tmp`), so
+    containers with different remote users can share it. The feature's `entrypoint` (run as
+    root) re-applies this on Docker setups that create new volumes root-owned
   - installs the prerequisites (`curl`, `perl`, `make`, `g++`, ...)
 - On container create (`onCreateCommand`), `ensure.sh` downloads the release if it isn't
   in the volume yet. A `flock` keeps containers created at the same time from both
-  downloading. If the release is already there, it finishes immediately.
+  downloading; the lock is held on the volume directory itself, so no lock file is left behind
+  with the wrong owner. If the release is already there, it finishes immediately.
 - `/usr/local/oss-cad-suite/bin` is **appended** to `PATH`, so system and project tools
   keep priority. The suite's bundled Python (`py3bin/`) is left off `PATH`. To get the
   suite's full environment, run `source /usr/local/oss-cad-suite/environment`.

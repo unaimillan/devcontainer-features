@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Create-time part of the feature: make sure HERMES_HOME is writable and holds
-# the config skeleton the installer would create (a volume first created
-# without the image's seed starts empty). Never overwrites existing files.
+# Create-time part of the feature: make sure HERMES_HOME is writable, links
+# to this image's dependency state and holds the config skeleton the installer
+# would create (a volume first created without the image's seed starts empty).
+# Never overwrites existing files, except this image's install state links.
 set -euo pipefail
 
 SHARE_DIR=/usr/local/share/hermes-agent
@@ -13,6 +14,18 @@ if [ "$(stat -c %u "$HERMES_HOME")" != "$(id -u)" ] && ! sudo -n chown -R "$(id 
     echo "hermes-agent: fix once with: docker run --rm -v hermes-agent-config:/v alpine chown -R $(id -u):$(id -g) /v" >&2
     exit 1
 fi
+
+# A volume created by an older image (or a manual install) holds no state, or
+# a stale copy, for this checkout; the image's state is the one that matches.
+mkdir -p "$HERMES_HOME/installs"
+for state in "$HERMES_INSTALLS_DIR"/*/; do
+    [ -d "$state" ] || continue
+    state="${state%/}"
+    link="$HERMES_HOME/installs/$(basename "$state")"
+    [ "$(readlink "$link")" = "$state" ] && continue
+    rm -rf "$link"
+    ln -s "$state" "$link"
+done
 
 mkdir -p "$HERMES_HOME"/{cron,sessions,logs,pairing,hooks,image_cache,audio_cache,memories,skills}
 if [ ! -f "$HERMES_HOME/.env" ]; then

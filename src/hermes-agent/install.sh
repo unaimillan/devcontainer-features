@@ -9,18 +9,22 @@ BROWSER="${BROWSER:-false}"
 COMPUTER_USE="${COMPUTERUSE:-false}"
 INSTALL_DIR="${INSTALLDIR:-/opt/hermes/agent}"
 RUNTIME_DIR="${RUNTIMEDIR:-/opt/hermes/tools}"
+INSTALLS_DIR="${INSTALLSDIR:-/opt/hermes/installs}"
 HOME_DIR="${HOMEDIR:-/var/lib/hermes}"
 LINK_USER_HOME="${LINKUSERHOME:-true}"
 
 SHARE_DIR=/usr/local/share/hermes-agent
 VOLUME_TARGET=/var/lib/hermes
 
-for dir in "$INSTALL_DIR" "$RUNTIME_DIR" "$HOME_DIR"; do
+for dir in "$INSTALL_DIR" "$RUNTIME_DIR" "$INSTALLS_DIR" "$HOME_DIR"; do
     case "$dir" in
         /*) ;;
         *) echo "hermes-agent: '$dir' is not an absolute path" >&2; exit 1 ;;
     esac
 done
+case "$INSTALLS_DIR/" in
+    "$HOME_DIR"/*) echo "hermes-agent: installsDir must be outside homeDir" >&2; exit 1 ;;
+esac
 
 if ! command -v apt-get >/dev/null; then
     echo "hermes-agent: only Debian/Ubuntu-based images (apt-get) are supported" >&2
@@ -76,8 +80,8 @@ elif [ "$USERNAME" != root ] && ! su "$USERNAME" -s /bin/sh -c "test -w $(printf
     echo "hermes-agent: $INSTALL_PARENT is not writable by $USERNAME; pick an installDir whose parent does not exist yet" >&2
     exit 1
 fi
-mkdir -p "$SHARE_DIR" "$RUNTIME_DIR" "$HOME_DIR" "$VOLUME_TARGET"
-chown "$USERNAME:$USER_GROUP" "$RUNTIME_DIR" "$HOME_DIR" "$VOLUME_TARGET"
+mkdir -p "$SHARE_DIR" "$RUNTIME_DIR" "$INSTALLS_DIR" "$HOME_DIR" "$VOLUME_TARGET"
+chown "$USERNAME:$USER_GROUP" "$RUNTIME_DIR" "$INSTALLS_DIR" "$HOME_DIR" "$VOLUME_TARGET"
 
 # Take the installer from the same ref as the code it installs.
 curl -fsSL "https://raw.githubusercontent.com/NousResearch/hermes-agent/$VERSION/scripts/install.sh" \
@@ -92,15 +96,29 @@ else
     su "$USERNAME" -s /bin/bash -c "$cmd"
 fi
 
+# Hermes keeps each checkout's dependency venv (~400 MB) in
+# HERMES_HOME/installs/<key>, so in the volume it would outlive the image and
+# hide the next build's. Keep it in the image and link it from HERMES_HOME;
+# the links seed new volumes, and ensure.sh adds them to existing ones.
+for state in "$HOME_DIR"/installs/*/; do
+    [ -d "$state" ] || continue
+    state="${state%/}"
+    key="$(basename "$state")"
+    rm -rf "${INSTALLS_DIR:?}/$key"
+    mv "$state" "$INSTALLS_DIR/$key"
+    ln -s "$INSTALLS_DIR/$key" "$state"
+    chown -h "$USERNAME:$USER_GROUP" "$state"
+done
+
 # The dev container CLI may later change the user's uid to match the host
 # (updateRemoteUserUID) and re-own only the home folder. Group access keeps
 # code and tool store usable then (supplementary groups survive usermod -u);
 # re-owning ~2 GB at start would copy it all into the container layer.
 groupadd -f -r hermes  # system gid: never collides with a host gid the CLI remaps to
 [ "$USERNAME" = root ] || usermod -aG hermes "$USERNAME"
-chgrp -R hermes "$INSTALL_DIR" "$RUNTIME_DIR"
-chmod -R g+rwX "$INSTALL_DIR" "$RUNTIME_DIR"
-find "$INSTALL_DIR" "$RUNTIME_DIR" -type d -exec chmod g+s {} +
+chgrp -R hermes "$INSTALL_DIR" "$RUNTIME_DIR" "$INSTALLS_DIR"
+chmod -R g+rwX "$INSTALL_DIR" "$RUNTIME_DIR" "$INSTALLS_DIR"
+find "$INSTALL_DIR" "$RUNTIME_DIR" "$INSTALLS_DIR" -type d -exec chmod g+s {} +
 git config --system --add safe.directory "$INSTALL_DIR"
 
 # Defaults for every caller; values already in the environment (e.g. a
@@ -111,6 +129,7 @@ cat > "$SHARE_DIR/env" <<EOF
 export HERMES_HOME="\${HERMES_HOME:-$HOME_DIR}"
 export HERMES_RUNTIME_DIR="\${HERMES_RUNTIME_DIR:-$RUNTIME_DIR}"
 HERMES_AGENT_DIR=$(printf %q "$INSTALL_DIR")
+HERMES_INSTALLS_DIR=$(printf %q "$INSTALLS_DIR")
 EOF
 echo "$USERNAME" > "$SHARE_DIR/user"
 COMMIT="$(git -c safe.directory="$INSTALL_DIR" -C "$INSTALL_DIR" rev-parse HEAD)"
@@ -146,4 +165,4 @@ if [ "$HOME_DIR" != "$VOLUME_TARGET" ]; then
     echo "hermes-agent: WARNING homeDir is $HOME_DIR, but the hermes-agent-config volume is mounted at $VOLUME_TARGET;" \
          "add your own mount for $HOME_DIR or its data is lost on rebuild" >&2
 fi
-echo "hermes-agent: installed $VERSION ($COMMIT) for $USERNAME (code $INSTALL_DIR, tools $RUNTIME_DIR, data $HOME_DIR)"
+echo "hermes-agent: installed $VERSION ($COMMIT) for $USERNAME (code $INSTALL_DIR, tools $RUNTIME_DIR, deps $INSTALLS_DIR, data $HOME_DIR)"

@@ -1,6 +1,6 @@
 {
     "id": "hermes-agent",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "name": "Hermes Agent (persistent config volume)",
     "description": "Nous Research Hermes Agent installed into the image at build time, with only its config, keys, memories and sessions kept in a named volume shared by every dev container.",
     "documentationURL": "https://github.com/unaimillan/devcontainer-features/tree/main/src/hermes-agent",
@@ -42,6 +42,11 @@
             "type": "string",
             "default": "/opt/hermes/tools",
             "description": "Tool store (HERMES_RUNTIME_DIR: uv, node, ripgrep, ...). Lives in the image."
+        },
+        "installsDir": {
+            "type": "string",
+            "default": "/opt/hermes/installs",
+            "description": "Dependency state (the venv Hermes would keep in HERMES_HOME/installs/<key>). Lives in the image; HERMES_HOME/installs/<key> links to it. Must be outside homeDir."
         },
         "homeDir": {
             "type": "string",

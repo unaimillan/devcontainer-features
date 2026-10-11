@@ -22,6 +22,10 @@ check ".env is private" bash -c '[ "$(stat -c %a /var/lib/hermes/.env)" = 600 ]'
 # Code and tool store must stay out of the persisted volume.
 check "no code in data dir" test ! -e /var/lib/hermes/hermes-agent
 check "no tools in data dir" test ! -e /var/lib/hermes/tools
+check "dependency state in image" bash -c '[ -f "$(echo /opt/hermes/installs/*/facts.json)" ]'
+check "data dir links to dependency state" bash -c 'for s in /opt/hermes/installs/*; do [ "$(readlink "/var/lib/hermes/installs/${s##*/}")" = "$s" ] || exit 1; done'
+# A volume from an older image or a manual install holds a stale copy instead.
+check "ensure.sh relinks a stale volume" bash -c 's=$(echo /opt/hermes/installs/*) l=/var/lib/hermes/installs/${s##*/} && rm "$l" && mkdir "$l" && /usr/local/share/hermes-agent/ensure.sh >/dev/null && [ "$(readlink "$l")" = "$s" ] && hermes --version'
 check "tool store in image" bash -c '[ -n "$(ls -A /opt/hermes/tools)" ]'
 check "tool store writable" test -w /opt/hermes/tools
 check "git reads the checkout" git -C /opt/hermes/agent status --short
